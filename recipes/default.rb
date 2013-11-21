@@ -26,7 +26,7 @@ when 'rhel'
 end
 
 # Install the required packages via cookbook
-node['gitlab']['cookbook_dependencies'].each do |requirement|  
+node['gitlab']['cookbook_dependencies'].each do |requirement|
   include_recipe requirement
 end
 
@@ -40,7 +40,7 @@ link "/usr/bin/redis-cli" do
   to "/usr/local/bin/redis-cli"
 end
 
-# The recommended Ruby is >= 1.9.3 
+# The recommended Ruby is >= 1.9.3
 # We'll use Fletcher Nichol's ruby_build cookbook to compile a Ruby.
 if node['gitlab']['install_ruby'] !~ /package/
   # build ruby
@@ -173,12 +173,20 @@ template "#{node['gitlab']['app_home']}/config/gitlab.yml" do
   group node['gitlab']['group']
   mode 0644
   variables(
+      :user => node['gitlab']['user'],
+      :email_from => node['gitlab']['email_from'],
+      :support_email => node['gitlab']['support_email'],
       :fqdn => node['gitlab']['web_fqdn'] || node['fqdn'],
       :https_boolean => node['gitlab']['https'],
       :git_user => node['gitlab']['user'],
       :git_home => node['gitlab']['home'],
       :backup_path => node['gitlab']['backup_path'],
-      :backup_keep_time => node['gitlab']['backup_keep_time']
+      :backup_keep_time => node['gitlab']['backup_keep_time'],
+      :default_projects_limit => node['gitlab']['default_projects_limit'],
+      :omniauth_enabled => node['gitlab']['omniauth']['enabled'],
+      :allow_single_sign_on => node['gitlab']['omniauth']['allow_single_sign_on:'],
+      :block_auto_created_users => node['gitlab']['omniauth']['block_auto_created_users:'],
+      :providers => node['gitlab']['omniauth']['providers']
   )
 end
 
@@ -242,7 +250,7 @@ execute "gitlab-bundle-install" do
   not_if { File.exists?("#{node['gitlab']['app_home']}/vendor/bundle") }
 end
 
-# Initialize database 
+# Initialize database
 execute "gitlab-bundle-rake" do
   command "bundle exec rake gitlab:setup RAILS_ENV=production force=yes && touch .gitlab-setup"
   cwd node['gitlab']['app_home']
@@ -299,7 +307,7 @@ end
 include_recipe "nginx"
 
 nginx_site 'gitlab' do
-  enable true 
+  enable true
 end
 
 nginx_site "default" do

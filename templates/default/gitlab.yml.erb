@@ -29,17 +29,17 @@ production: &base
     # relative_url_root: /gitlab
 
     # Uncomment and customize if you can't use the default user to run GitLab (default: 'git')
-    user: <%= node['gitlab']['user'] %>
+    user: <%= @user %>
 
     ## Email settings
     # Email address used in the "From" field in mails sent by GitLab
-    email_from: <%= node['gitlab']['email_from'] %>
+    email_from: <%= @email_from %>
 
     # Email address of your support contact (default: same as email_from)
-    support_email: <%= node['gitlab']['support_email'] %>
+    support_email: <%= @support_email %>
 
     ## User settings
-    default_projects_limit: 10
+    default_projects_limit: <%= @default_projects_limit %>
     # default_can_create_group: false  # default: true
     # username_changing_enabled: false # default: true - User can change her username/namespace
 
@@ -80,7 +80,7 @@ production: &base
     #   ##  :project_id        - GitLab project identifier
     #   ##  :issues_tracker_id - Project Name or Id in external issue tracker
     #   new_issue_url: "http://redmine.sample/projects/:issues_tracker_id/issues/new"
-    # 
+    #
     # jira:
     #   project_url: "http://jira.sample/issues/?jql=project=:issues_tracker_id"
     #   issues_url: "http://jira.sample/browse/:id"
@@ -111,14 +111,14 @@ production: &base
   ## OmniAuth settings
   omniauth:
     # Allow login via Twitter, Google, etc. using OmniAuth providers
-    enabled: false
+    enabled: <%= @omniauth_enabled %>
 
     # CAUTION!
     # This allows users to login without having a user account first (default: false).
     # User accounts will be created automatically when authentication was successful.
-    allow_single_sign_on: false
+    allow_single_sign_on: <%= @allow_single_sign_on %>
     # Locks down those users until they have been cleared by the admin (default: true).
-    block_auto_created_users: true
+    block_auto_created_users: <%= @block_auto_created_users %>
 
     ## Auth providers
     # Uncomment the following lines and fill in the data of the auth provider you want to use
@@ -127,13 +127,15 @@ production: &base
     # The 'app_id' and 'app_secret' parameters are always passed as the first two
     # arguments, followed by optional 'args' which can be either a hash or an array.
     providers:
-      # - { name: 'google_oauth2', app_id: 'YOUR APP ID',
-      #     app_secret: 'YOUR APP SECRET',
-      #     args: { access_type: 'offline', approval_prompt: '' } }
-      # - { name: 'twitter', app_id: 'YOUR APP ID',
-      #     app_secret: 'YOUR APP SECRET'}
-      # - { name: 'github', app_id: 'YOUR APP ID',
-      #     app_secret: 'YOUR APP SECRET' }
+    <% providers.each do |provider| %>
+      - { name: '<%= provider['name'] %>',
+          app_id: '<%= provider['app_id'] %>',
+          app_secret: '<%= provider['app_secret'] %>',
+          args: { access_type: '<%= provider['access_type'] %>',
+                  approval_prompt: '<%= provider['approval_prompt'] %>'
+                }
+        }
+    <% end %>
 
 
 
@@ -144,7 +146,7 @@ production: &base
   # GitLab Satellites
   satellites:
     # Relative paths are relative to Rails.root (default: tmp/repo_satellites/)
-    path: /home/git/gitlab-satellites/
+    path: <%= @git_home %>/gitlab-satellites/
 
   ## Backup settings
   backup:

@@ -27,6 +27,14 @@ default['gitlab']['web_fqdn'] = nil
 default['gitlab']['nginx_server_names'] = [ 'gitlab.*', node['fqdn'] ]
 default['gitlab']['email_from'] = "gitlab@#{node['domain']}"
 default['gitlab']['support_email'] = "gitlab-support@#{node['domain']}"
+default['gitlab']['default_projects_limit'] = 10
+
+# Settings for omniauth
+default['gitlab']['omniauth']['enabled'] = false
+default['gitlab']['omniauth']['allow_single_sign_on'] = false
+default['gitlab']['omniauth']['block_auto_created_users'] = true
+default['gitlab']['omniauth']['providers'] = []
+
 
 # Set github URL for gitlab
 default['gitlab']['git_url'] = "git://github.com/gitlabhq/gitlabhq.git"
