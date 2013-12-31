@@ -25,6 +25,17 @@ when 'rhel'
   include_recipe 'yum::epel'
 end
 
+
+# Setup the database
+case node['gitlab']['database']['type']
+  when 'mysql'
+    include_recipe 'gitlab::mysql'
+  when 'postgres'
+    include_recipe 'gitlab::postgres'
+  else
+    Chef::Log.error "#{node['gitlab']['database']['type']} is not a valid type. Please use 'mysql' or 'postgres'!"
+end
+
 # Install the required packages via cookbook
 node['gitlab']['cookbook_dependencies'].each do |requirement|  
   include_recipe requirement
@@ -38,35 +49,6 @@ end
 # symlink redis-cli into /usr/bin (needed for gitlab hooks to work)
 link "/usr/bin/redis-cli" do
   to "/usr/local/bin/redis-cli"
-end
-
-# The recommended Ruby is >= 1.9.3 
-# We'll use Fletcher Nichol's ruby_build cookbook to compile a Ruby.
-if node['gitlab']['install_ruby'] !~ /package/
-  # build ruby
-  ruby_build_ruby node['gitlab']['install_ruby']
-
-  # Drop off a profile script.
-  template "/etc/profile.d/gitlab.sh" do
-    owner "root"
-    group "root"
-    mode 0755
-    variables(
-        :fqdn => node['fqdn'],
-        :install_ruby => node['gitlab']['install_ruby']
-    )
-  end
-
-  # Set PATH for remainder of recipe.
-  ENV['PATH'] = "/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin:/usr/local/ruby/#{node['gitlab']['install_ruby']}/bin"
-end
-
-# Install required Ruby Gems for Gitlab
-%w[ charlock_holmes bundler ].each do |gempkg|
-  gem_package gempkg do
-    action :install
-    options("--no-ri --no-rdoc")
-  end
 end
 
 # Add a git user for Gitlab
@@ -110,6 +92,34 @@ template "#{node['gitlab']['home']}/.ssh/config" do
   )
 end
 
+# The recommended Ruby is >= 1.9.3 
+# We'll use Fletcher Nichol's ruby_build cookbook to compile a Ruby.
+if node['gitlab']['install_ruby'] !~ /package/ 
+  ruby_build_ruby node['gitlab']['install_ruby'] do
+    prefix_path node['gitlab']['install_ruby_path']
+    user node['gitlab']['user']
+    group node['gitlab']['user']
+  end
+
+  # Install required Ruby Gems for Gitlab with ~git/bin/gem
+  %w[ charlock_holmes bundler ].each do |gempkg|
+    gem_package gempkg do
+      gem_binary "#{node['gitlab']['install_ruby_path']}/bin/gem"
+      action :install
+      options("--no-ri --no-rdoc")
+    end
+  end
+else
+# Install required Ruby Gems for Gitlab with system gem
+  %w[ charlock_holmes bundler ].each do |gempkg|
+    gem_package gempkg do
+      gem_binary "#{node['gitlab']['install_ruby_path']}/bin/gem"
+      action :install
+      options("--no-ri --no-rdoc")
+    end
+  end
+end
+
 # setup gitlab-shell
 # Clone Gitlab-shell repo
 git node['gitlab']['shell']['home'] do
@@ -140,17 +150,6 @@ git node['gitlab']['app_home'] do
   group node['gitlab']['group']
 end
 
-
-# Setup the database
-case node['gitlab']['database']['type']
-  when 'mysql'
-    include_recipe 'gitlab::mysql'
-  when 'postgres'
-    include_recipe 'gitlab::postgres'
-  else
-    Chef::Log.error "#{node['gitlab']['database']['type']} is not a valid type. Please use 'mysql' or 'postgres'!"
-end
-
 # Write the database.yml
 template "#{node['gitlab']['app_home']}/config/database.yml" do
   source 'database.yml.erb'
@@ -167,6 +166,7 @@ template "#{node['gitlab']['app_home']}/config/database.yml" do
       :password => node['gitlab']['database']['password']
   )
 end
+
 # Render gitlab config file
 template "#{node['gitlab']['app_home']}/config/gitlab.yml" do
   owner node['gitlab']['user']
